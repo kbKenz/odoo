@@ -2,7 +2,7 @@ version: "3.1"
 
 services:
   web:
-    image: odoo:17.0 # Use the latest Odoo version
+    image: odoo:18.0 # Use the latest Odoo version
     container_name: odoo-web
     depends_on:
       - db
