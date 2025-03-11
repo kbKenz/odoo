@@ -16,14 +16,20 @@ DB_USER="odoo-proj"
 DB_PASSWORD="odoo-proj"
 PROXY_PORT=5432
 
-# 1️⃣ Check Cloud SQL Auth Proxy installation
+# 1️⃣ Check and install Cloud SQL Auth Proxy if needed
 if ! command -v cloud-sql-proxy &> /dev/null; then
-    echo "❌ Cloud SQL Auth Proxy not found!"
-    echo "Please install it manually with:"
-    echo "  brew install cloud-sql-proxy    # macOS with Homebrew"
-    echo "  OR"
-    echo "  Download from: https://cloud.google.com/sql/docs/postgres/connect-auth-proxy"
-    exit 1
+    echo "🔄 Installing Cloud SQL Auth Proxy..."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.1/cloud-sql-proxy.darwin.amd64
+        chmod +x cloud-sql-proxy
+        sudo mv cloud-sql-proxy /usr/local/bin/
+    else
+        # Linux
+        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.1/cloud-sql-proxy.linux.amd64
+        chmod +x cloud-sql-proxy
+        sudo mv cloud-sql-proxy /usr/local/bin/
+    fi
 fi
 
 # 2️⃣ Build the Docker image
@@ -35,54 +41,46 @@ echo "🧹 Cleaning up any existing containers..."
 docker stop $CONTAINER_NAME 2>/dev/null || true
 docker rm $CONTAINER_NAME 2>/dev/null || true
 
-# 4️⃣ Create Docker network if it doesn't exist
-echo "🔗 Setting up Docker network..."
-docker network create odoo-network 2>/dev/null || true
+# 4️⃣ Start Cloud SQL Auth Proxy
+echo "☁️ Starting Cloud SQL Auth Proxy..."
+# Kill any existing proxy
+pkill -f "cloud-sql-proxy.*$CLOUDSQL_INSTANCE" || true
 
-# 5️⃣ Run PostgreSQL container to act as proxy
-echo "🐘 Starting PostgreSQL proxy container..."
-docker stop postgres-proxy 2>/dev/null || true
-docker rm postgres-proxy 2>/dev/null || true
-docker run -d \
-  --name postgres-proxy \
-  --network odoo-network \
-  -e POSTGRES_USER=$DB_USER \
-  -e POSTGRES_PASSWORD=$DB_PASSWORD \
-  -e POSTGRES_DB=postgres \
-  -p $PROXY_PORT:5432 \
-  postgres:15
+# Start the proxy in the background with the correct syntax
+cloud-sql-proxy $CLOUDSQL_INSTANCE --port $PROXY_PORT &
+PROXY_PID=$!
+echo "🔌 Cloud SQL Auth Proxy running with PID: $PROXY_PID"
 
-# Wait for PostgreSQL to start
-echo "⏳ Waiting for PostgreSQL to start..."
-sleep 5
+# Give the proxy a moment to start
+sleep 3
 
-# 6️⃣ Run the Docker container
+# 5️⃣ Run the Docker container
 echo "🚀 Starting Odoo container..."
 docker run -d \
   --name $CONTAINER_NAME \
-  --network odoo-network \
   -p $LOCAL_PORT:$PORT \
-  -e DB_HOST=postgres-proxy \
-  -e DB_PORT=5432 \
+  -e DB_HOST=host.docker.internal \
+  -e DB_PORT=$PROXY_PORT \
   -e DB_USER=$DB_USER \
   -e DB_PASSWORD=$DB_PASSWORD \
+  --add-host=host.docker.internal:host-gateway \
   --restart unless-stopped \
   $IMAGE_NAME
 
-# 7️⃣ Display container info
+# 6️⃣ Display container info
 echo "✅ Odoo is running locally!"
 echo "🌍 Access it at: http://localhost:$LOCAL_PORT"
 echo ""
 echo "📋 Container details:"
 docker ps | grep $CONTAINER_NAME
 
-# 8️⃣ Print helpful commands
+# 7️⃣ Print helpful commands
 echo ""
 echo "ℹ️ Helpful commands:"
 echo "  - View logs: docker logs $CONTAINER_NAME"
 echo "  - Stop container: docker stop $CONTAINER_NAME"
 echo "  - Start container: docker start $CONTAINER_NAME"
 echo "  - Remove container: docker rm $CONTAINER_NAME"
+echo "  - Stop proxy: kill $PROXY_PID"
 echo ""
-echo "⚠️ Note: This setup uses a local PostgreSQL container instead of directly connecting to Cloud SQL."
-echo "When you're ready to use real data, you'll need to migrate your database from Cloud SQL to this local instance." 
+echo "⚠️ Note: The Cloud SQL Auth Proxy is running in the background. To stop it, run: kill $PROXY_PID" 
