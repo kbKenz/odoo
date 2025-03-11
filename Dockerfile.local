@@ -1,0 +1,15 @@
+FROM --platform=linux/amd64 gcr.io/odoo-proj-453313/odoo
+
+# Install Cloud SQL Proxy
+RUN apt-get update && apt-get install -y curl && \
+    curl -o /usr/local/bin/cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.9.0/cloud-sql-proxy.linux.amd64 && \
+    chmod +x /usr/local/bin/cloud-sql-proxy
+
+# Copy service account credentials
+COPY ./certificates/odoo-proj-453313-5ea6698e3a83.json /tmp/credentials.json
+
+# Create startup script
+RUN echo '#!/bin/bash \ncloud-sql-proxy --credentials-file=/tmp/credentials.json odoo-proj-453313:us-central1:odoo-proj & \nPROXY_PID=$! \nsleep 5 \necho "🔌 Cloud SQL Proxy started, connecting to database..." \nodoo --db_host=127.0.0.1 --db_user=odoo-proj --db_password=odoo-proj --http-port=8080 --http-interface=0.0.0.0 \nkill $PROXY_PID' > /entrypoint-local.sh && \
+    chmod +x /entrypoint-local.sh
+
+ENTRYPOINT ["/entrypoint-local.sh"]
