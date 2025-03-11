@@ -1,9 +1,11 @@
 FROM odoo:18.0
 
-# These environment variables will be provided at runtime
-# We're not setting default values here to avoid hardcoding credentials
+# Set environment variables for Odoo
+ENV HOST=${DB_HOST}
+ENV USER=${DB_USER}
+ENV PASSWORD=${DB_PASSWORD}
 
-# Expose Cloud Run's port
+# Expose Cloud Run’s port
 EXPOSE 8080
 
 # Start Odoo on port 8080 and bind to all interfaces
