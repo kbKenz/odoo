@@ -49,6 +49,7 @@ package.json
 /man/
 /share/
 /src/
-# Google Cloud credentials
-*.json
 /certificates
+# Google Cloud credentials
+certificates/
+*.json
