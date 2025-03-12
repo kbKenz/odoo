@@ -60,3 +60,4 @@ package.json
 *.pfx
 *.json
 certificates/odoo-proj-453313-5ea6698e3a83.json
+/certificates
