@@ -13,6 +13,7 @@ DB_USER="odoo-proj"
 DB_PASSWORD="odoo-proj"
 LOCAL_PORT=8080
 PROXY_PORT=5432
+BUCKET_NAME="odoo-proj-453313-filestore"
 
 # Check if required tools are installed
 command -v docker >/dev/null 2>&1 || { echo "❌ Docker is required but not installed. Please install Docker."; exit 1; }
@@ -84,6 +85,10 @@ docker run -it --rm \
     -e DB_USER=$DB_USER \
     -e DB_PASSWORD=$DB_PASSWORD \
     -e DB_NAME=postgres \
+    -e DATA_DIR=/var/lib/odoo \
+    -e CLOUD_STORAGE_BUCKET=$BUCKET_NAME \
+    -v "$(pwd)/certificates:/certificates" \
+    -e GOOGLE_APPLICATION_CREDENTIALS=/certificates/odoo-proj-453313-5ea6698e3a83.json \
     --platform linux/amd64 \
     --name odoo-local \
     $IMAGE_NAME

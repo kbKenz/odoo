@@ -8,6 +8,7 @@ REGION="us-central1"
 SERVICE_NAME="odoo-service"
 CLOUDSQL_INSTANCE="odoo-proj-453313:us-central1:odoo-proj"
 IMAGE_NAME="gcr.io/$PROJECT_ID/odoo"
+BUCKET_NAME="odoo-proj-453313-filestore"
 
 # 1️⃣ Authenticate with Google Cloud (if needed)
 echo "🔑 Authenticating with Google Cloud..."
@@ -30,7 +31,8 @@ gcloud run deploy $SERVICE_NAME \
   --allow-unauthenticated \
   --port=8080 \
   --add-cloudsql-instances=$CLOUDSQL_INSTANCE \
-  --set-env-vars="DB_HOST=/cloudsql/$CLOUDSQL_INSTANCE,DB_USER=odoo-proj,DB_PASSWORD=odoo-proj"
+  --set-env-vars="DB_HOST=/cloudsql/$CLOUDSQL_INSTANCE,DB_USER=odoo-proj,DB_PASSWORD=odoo-proj,DATA_DIR=/var/lib/odoo,CLOUD_STORAGE_BUCKET=$BUCKET_NAME" \
+  --service-account="odoo-service@$PROJECT_ID.iam.gserviceaccount.com"
 
 # 5️⃣ Get Cloud Run Service URL
 echo "🌍 Fetching Cloud Run Service URL..."
